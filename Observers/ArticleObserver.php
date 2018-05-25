@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Observers;
+namespace App\Modules\Editor\Article\Observers;
 
 
 use App\Article;
