@@ -4,14 +4,14 @@ namespace App\Modules\Editor\Article\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 
-use App\Article;
-use App\ArticleCategory;
-use App\ArticleContent;
-use App\Language;
-use App\ArticleArchive;
-use App\ArticlePermission;
-use App\UserData;
-use App\Role;
+use App\Modules\Core\Article;
+use App\Modules\Core\ArticleCategory;
+use App\Modules\Core\ArticleContent;
+use App\Modules\Core\Language;
+use App\Modules\Core\ArticleArchive;
+use App\Modules\Core\ArticlePermission;
+use App\Modules\Core\UserData;
+use App\Modules\Core\Role;
 
 class ArticleController extends Controller
 {
