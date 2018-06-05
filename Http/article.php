@@ -4,15 +4,19 @@ Route::get('articles', 'ArticleController@getArticles');
 
 Route::get('trashed-articles', 'ArticleController@getTrashedArticles');
 
-Route::put('', 'ArticleController@putArticle');
+Route::prefix('article')->group(function () {
 
-Route::post('restore/{article_id}', 'ArticleController@postRestore');
+    Route::put('', 'ArticleController@putArticle');
 
-Route::get('{article_slug}', 'ArticleController@getArticle');
+    Route::post('restore/{article_id}', 'ArticleController@postRestore');
 
-Route::post('{article_id}', 'ArticleController@postArticle');
+    Route::get('{article_slug}', 'ArticleController@getArticle');
 
-Route::delete('{article_id}', 'ArticleController@deleteArticle');
+    Route::post('{article_id}', 'ArticleController@postArticle');
+
+    Route::delete('{article_id}', 'ArticleController@deleteArticle');
+
+});
 
 Route::get('content/{article_slug}/{language_slug}', 'ArticleController@getArticleContent');
 

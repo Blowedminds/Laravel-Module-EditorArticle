@@ -4,8 +4,8 @@
 namespace App\Modules\Editor\Article\Observers;
 
 
-use App\Article;
-use App\ArticleRoom;
+use App\Modules\Core\Article;
+use App\Modules\Core\ArticleRoom;
 
 class ArticleObserver
 {
