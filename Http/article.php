@@ -8,7 +8,6 @@ Route::prefix('article')->group(function () {
 
     Route::put('', 'ArticleController@putArticle');
 
-    Route::post('restore/{article_id}', 'ArticleController@postRestore');
 
     Route::get('{article_slug}', 'ArticleController@getArticle');
 
@@ -17,6 +16,8 @@ Route::prefix('article')->group(function () {
     Route::delete('{article_id}', 'ArticleController@deleteArticle');
 
 });
+
+Route::post('restore/{article_id}', 'ArticleController@postRestore');
 
 Route::get('content/{article_slug}/{language_slug}', 'ArticleController@getArticleContent');
 
