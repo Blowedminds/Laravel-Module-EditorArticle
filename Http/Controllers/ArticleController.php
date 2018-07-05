@@ -202,8 +202,6 @@ class ArticleController extends Controller
 
         $article = Article::whereId($article_id)->withContent(request()->input('language_id'))->first();
 
-        $response = "Makaleniz başarı ile güncellendi!";
-
         if (
             $article->content->title != request()->input('title') ||
             $article->content->sub_title != request()->input('sub_title') ||
@@ -211,8 +209,6 @@ class ArticleController extends Controller
             $article->content->keywords != request()->input('keywords')
         ) {
             ArticleArchive::create($article->content->toArray());
-
-            $response = "Makaleniz başarı ile güncellendi, eskisinin kopyası saklandı!";
 
             $article->content->version = $article->content->version + 1;
         }
@@ -223,7 +219,8 @@ class ArticleController extends Controller
 
         return response()->json([
             'header' => 'İşlem Başarılı',
-            'message' => $response,
+            'message' => 'Makale Güncellendi',
+            'action' => 'Tamam',
             'state' => 'success'
         ], 200);
     }
@@ -232,7 +229,6 @@ class ArticleController extends Controller
     {
         request()->validate([
             'slug' => 'required',
-            'categories' => 'required',
             'image' => 'required'
         ]);
 
@@ -256,6 +252,7 @@ class ArticleController extends Controller
         return response()->json([
             'header' => 'İşlem Başarılı',
             'message' => 'Değişiklikler kaydedildi!',
+            'action' => 'Tamam',
             'state' => 'success'
         ], 200);
     }
