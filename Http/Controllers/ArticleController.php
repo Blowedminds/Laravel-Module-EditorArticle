@@ -17,7 +17,7 @@ class ArticleController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth:api');
+        $this->middleware(['auth:api', 'ownership.article']);
 
         $this->middleware('article.permission')->only([
             'getArticle',
