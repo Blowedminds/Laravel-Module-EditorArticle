@@ -10,6 +10,8 @@ use App\Modules\Core\ArticleContent;
 use App\Modules\Core\Language;
 use App\Modules\Core\ArticleArchive;
 use App\Modules\Core\ArticlePermission;
+use App\Modules\Core\Permission;
+use App\Modules\Core\User;
 use App\Modules\Core\UserData;
 use App\Modules\Core\Role;
 
@@ -163,10 +165,10 @@ class ArticleController extends Controller
             'body' => 'required',
             'keywords' => 'required',
             'published' => 'required',
-            'language_id' => 'required',
+            'language' => 'required',
         ]);
 
-        $language_id = request()->input('language_id');
+        $language_id = Language::slug(request()->input('language'))->firstOrFail()->id;
 
         $article = Article::where('id', $article_id)
             ->withContent($language_id)->firstOrFail();
@@ -178,6 +180,7 @@ class ArticleController extends Controller
         $inputs = request()->all();
 
         $inputs['article_id'] = $article_id;
+        $inputs['language_id'] = $language_id;
         $inputs['version'] = 1;
 
         ArticleContent::create($inputs);
@@ -279,85 +282,57 @@ class ArticleController extends Controller
     {
         $user = auth()->user();
 
-        $article = Article::find($article_id);
+        $article_users = Article::with(['users' => function ($query) {
+            $query->whereHas('roles', function ($query_role) {
+                $query_role->where('user_datas.role_id', '>', 1);
+            })->select(['users.user_id', 'users.name']);
+        }])->findOrFail($article_id)->users;
 
-        $article_permission = $article->users;
+        $users = User::whereHas('roles', function ($query) {
+            $query->where('role_id', '>', 1);
+        })->get(['user_id', 'name']);
 
-        if ($article->author_id != $user->user_id && !$role = $user->rolesByRoleId(1)->first())
-            return response()->json([
-                'header' => 'Yetkisiz İşlem', 'message' => 'Bu makaleyi düzenlemeye yetkiniz yok!', 'state' => 'error'
-            ]);
+        $users = $users->map(function ($user) use ($article_users) {
+            $user->permission = false;
 
-        $data = ['users' => [], 'permission' => []];
-        $i = 0;
-
-        $roles = Role::where('id', '>', 1)->get();
-
-        foreach ($roles as $key => $value) {
-            $temp_data = $value->users;
-
-            foreach ($temp_data as $key => $value) {
-                if ($user->user_id == $value->user_id) continue;
-
-                $data['users'][$i]['name'] = $value->name;
-                $data['users'][$i]['user_id'] = $value->user_id;
-                $i++;
+            foreach ($article_users as $perm_user) {
+                if ($user->user_id == $perm_user->user_id) {
+                    $user->permission = true;
+                }
             }
-        }
+            return $user;
+        });
 
-        $i = 0;
-
-        foreach ($article_permission as $key => $value) {
-            if ($user->user_id == $value->user_id) continue;
-
-            $data['permission'][$i]['user_id'] = $value->user_id;
-            $data['permission'][$i]['name'] = $value->name;
-            $i++;
-        }
-
-        return response()->json($data, 200);
+        return response()->json(['users' => $users, 'permissions' => $article_users], 200);
     }
 
     public function putPermission($article_id)
     {
-        request()->validate([
-            'have_permission' => 'present|array',
-            'not_have_permission' => 'present|array'
-        ]);
-
-        $have_permission = request()->input('have_permission');
-        $not_have_permission = request()->input('not_have_permission');
-
         $user = auth()->user();
 
-        $article = Article::find($article_id);
-
-        $article_permission = $article->users;
+        $article = Article::with(['users' => function ($query) {
+            $query->whereHas('roles', function ($query_role) {
+                $query_role->where('user_datas.role_id', '>', 1);
+            })->select('users.user_id');
+        }])->findOrFail($article_id);
 
         if ($article->author_id != $user->user_id && !$role = $user->rolesByRoleId(1)->first())
             return response()->json([
                 'header' => 'Yetkisiz İşlem', 'message' => 'Bu makaleyi düzenlemeye yetkiniz yok!', 'state' => 'error'
             ]);
 
-        foreach ($have_permission as $key => $value) {
-            if ($temp = UserData::where('user_id', $value['user_id'])->where('role_id', 1)->first()) continue;
+        ArticlePermission::whereIn('user_id', $article->users)->where('article_id', $article_id)->delete();
 
-            ArticlePermission::firstOrCreate(
-                ['article_id' => $article_id, 'user_id' => $value['user_id']], ['article_id' => $article_id, 'user_id' => $value['user_id']]
-            );
-        }
+        $users = User::whereHas('roles', function ($query) {
+            $query->where('role_id', '>', 1);
+        })->whereIn('user_id', request()->input('permissions')?? [])->get();
 
-        foreach ($not_have_permission as $key => $value) {
-            if ($value['user_id'] == $user->user_id) continue;
-
-            if ($temp = UserData::where('user_id', $value['user_id'])->where('role_id', 1)->first()) continue;
-
-            if ($exist = ArticlePermission::where('article_id', $article_id)->where('user_id', $value['user_id'])->first())
-                $exist->delete();
+        foreach ($users as $user) {
+            ArticlePermission::create(['article_id' => $article_id, 'user_id' => $user->user_id]);
         }
 
         return response()->json([
-            'header' => 'İşlem Başarılı', 'message' => 'İzinler başarı ile güncellendi!', 'state' => 'success'
+            'header' => 'İşlem Başarılı', 'message' => 'İzinler başarı ile güncellendi!', 'state' => 'success', 'action' => 'Tamam'
         ], 200);
     }
 }
