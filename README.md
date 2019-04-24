@@ -28,3 +28,5 @@ This module supports article management backend for Angular-Module-Article
     }
  `
 3. Migrate the database. `php artisan migrate --path=/app/Modules/Article/Database/migrations`
+4. Add `Observers/ArticleObserver` to `app/Providers/AppServiceProvider.php` file 
+in boot function. eg, `Article::observe(ArticleObserver::class)`
