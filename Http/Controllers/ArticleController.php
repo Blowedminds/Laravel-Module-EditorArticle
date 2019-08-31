@@ -125,9 +125,7 @@ class ArticleController extends Controller
             'image' => request()->input('image')
         ]);
 
-        $request_categories = json_decode(request()->input('category'));
-
-        foreach ($request_categories as $key => $value) {
+        foreach (request()->input('category') as $key => $value) {
             ArticleCategory::create([
                 'article_id' => $article->id,
                 'category_id' => $value
