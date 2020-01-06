@@ -23,8 +23,8 @@ class ArticleController extends Controller
 
         $this->middleware('article.permission')->only([
             'getArticle',
-            'postArticle',
-            'postArticleContent',
+            'putArticle',
+            'putArticleContent',
             'postRestore',
             'getArticleContent',
             'deleteArticle',
@@ -32,7 +32,7 @@ class ArticleController extends Controller
         ]);
     }
 
-    public function getArticles()
+    public function getArticlesPaginate()
     {
         $articles = auth()->user()
             ->articles()
@@ -46,7 +46,7 @@ class ArticleController extends Controller
                 }
             ])
             ->orderBy('created_at', 'DESC')
-            ->paginate(request()->input('per-page') ?? 5);
+            ->paginate(request()->input('per-page') ?? 20);
 
         return response()->json($articles, 200);
     }
@@ -68,7 +68,7 @@ class ArticleController extends Controller
             ->first();
     }
 
-    public function getTrashedArticles()
+    public function getTrashedArticlesPaginate()
     {
         $trashedArticle = auth()->user()
             ->trashedArticles()
@@ -78,7 +78,7 @@ class ArticleController extends Controller
                     $query->select('user_id', 'name');
                 }
             ])
-            ->paginate(10);
+            ->paginate(request()->input('per-page') ?? 20);
 
         return response()->json($trashedArticle, 200);
     }
@@ -92,27 +92,23 @@ class ArticleController extends Controller
         return response()->json($article, 200);
     }
 
-    public function deleteArticle($article_id)
+    public function deleteArticle($article_slug)
     {
-        Article::findOrFail($article_id)->delete();
+        Article::slug($article_slug)->firstOrFail()->delete();
 
-        return response()->json([
-            'header' => 'İşlem Başarılı',
-            'message' => 'Makaleniz çöpe taşındı!',
-            'state' => 'success'
-        ], 200);
+        return response()->json();
     }
 
-    public function putArticle()
+    public function postArticle()
     {
         request()->validate([
             'title' => 'required',
             'sub_title' => 'required',
             'body' => 'required',
-            'keywords' => 'required',
+            'keywords' => 'present',
             'published' => 'required',
             'language_id' => 'required',
-            'category' => 'required',
+            'categories' => 'present',
             'image' => 'required',
             'slug' => 'required'
         ]);
@@ -125,10 +121,10 @@ class ArticleController extends Controller
             'image' => request()->input('image')
         ]);
 
-        foreach (request()->input('category') as $key => $value) {
+        foreach (request()->input('categories') as $category_id) {
             ArticleCategory::create([
                 'article_id' => $article->id,
-                'category_id' => $value
+                'category_id' => $category_id
             ]);
         }
 
@@ -148,14 +144,10 @@ class ArticleController extends Controller
             'user_id' => $user->user_id
         ]);
 
-        return response()->json([
-            'header' => 'İşlem Başarılı',
-            'message' => 'Makaleniniz başarılı bir şekilde kaydedildi',
-            'state' => 'success'
-        ], 200);
+        return response()->json();
     }
 
-    public function putArticleContent($article_id)
+    public function putArticleContent($article_id, $language_slug)
     {
         request()->validate([
             'title' => 'required',
@@ -163,10 +155,9 @@ class ArticleController extends Controller
             'body' => 'required',
             'keywords' => 'required',
             'published' => 'required',
-            'language' => 'required',
         ]);
 
-        $language_id = Language::slug(request()->input('language'))->firstOrFail()->id;
+        $language_id = Language::slug($language_slug)->firstOrFail()->id;
 
         $article = Article::where('id', $article_id)
             ->withContent($language_id)->firstOrFail();
@@ -183,14 +174,10 @@ class ArticleController extends Controller
 
         ArticleContent::create($inputs);
 
-        return response()->json([
-            'header' => 'İşlem Başarılı',
-            'message' => 'Makaleninize başarılı bir şekilde dil eklendi',
-            'state' => 'success'
-        ], 200);
+        return response()->json();
     }
 
-    public function postArticleContent($article_id)
+    public function postArticleContent($article_id, $language_slug)
     {
         request()->validate([
             'title' => 'required',
@@ -201,7 +188,9 @@ class ArticleController extends Controller
             'language_id' => 'required',
         ]);
 
-        $article = Article::whereId($article_id)->withContent(request()->input('language_id'))->first();
+        $language_id = Language::slug($language_slug)->firstOrFail()->id;
+
+        $article = Article::whereId($article_id)->withContent($language_id)->first();
 
         if (
             $article->content->title != request()->input('title') ||
@@ -215,25 +204,21 @@ class ArticleController extends Controller
         }
 
         $article->content->update(request()->only([
-            'title', 'sub_title', 'body', 'keywords', 'published', 'language_id'
+            'title', 'sub_title', 'body', 'keywords', 'published'
         ]));
 
-        return response()->json([
-            'header' => 'İşlem Başarılı',
-            'message' => 'Makale Güncellendi',
-            'action' => 'Tamam',
-            'state' => 'success'
-        ], 200);
+        return response()->json();
     }
 
-    public function postArticle($article_id)
+    public function putArticle($article_slug)
     {
         request()->validate([
             'slug' => 'required',
-            'image' => 'required'
+            'image' => 'required',
+            'categories' => 'present'
         ]);
 
-        $article = Article::findOrFail($article_id);
+        $article = Article::slug($article_slug)->firstOrFail();
 
         ArticleCategory::where('article_id', $article->id)->forceDelete();
 
@@ -250,30 +235,21 @@ class ArticleController extends Controller
             'slug', 'image'
         ]));
 
-        return response()->json([
-            'header' => 'İşlem Başarılı',
-            'message' => 'Değişiklikler kaydedildi!',
-            'action' => 'Tamam',
-            'state' => 'success'
-        ], 200);
+        return response()->json();
     }
 
-    public function postRestore($article_id)
+    public function postRestore($article_slug)
     {
-        Article::onlyTrashed()->findOrFail($article_id)->restore();
+        Article::onlyTrashed()->slug($article_slug)->firstOrFail()->restore();
 
-        return response()->json([
-            'header' => 'İşlem Başarılı', 'message' => 'Başarılı bir şekilde geri yüklendi', 'state' => 'success'
-        ], 200);
+        return response()->json();
     }
 
     public function deleteForceDelete($article_id)
     {
         Article::onlyTrashed()->findOrFail($article_id)->forceDelete();
 
-        return response()->json([
-            'header' => 'İşlem Başarılı', 'message' => 'Makale veritabanından kaldırıldı', 'state' => 'success'
-        ], 200);
+        return response()->json();
     }
 
     public function getPermission($article_id)
@@ -306,6 +282,10 @@ class ArticleController extends Controller
 
     public function putPermission($article_id)
     {
+        request()->validate([
+            'permissions' => 'present'
+        ]);
+
         $user = auth()->user();
 
         $article = Article::with(['users' => function ($query) {
@@ -315,22 +295,18 @@ class ArticleController extends Controller
         }])->findOrFail($article_id);
 
         if ($article->author_id != $user->user_id && !$role = $user->rolesByRoleId(1)->first())
-            return response()->json([
-                'header' => 'Yetkisiz İşlem', 'message' => 'Bu makaleyi düzenlemeye yetkiniz yok!', 'state' => 'error'
-            ]);
+            return response()->json([], 403);
 
         ArticlePermission::whereIn('user_id', $article->users)->where('article_id', $article_id)->delete();
 
         $users = User::whereHas('roles', function ($query) {
             $query->where('role_id', '>', 1);
-        })->whereIn('user_id', request()->input('permissions')?? [])->get();
+        })->whereIn('user_id', request()->input('permissions'))->get();
 
         foreach ($users as $user) {
             ArticlePermission::create(['article_id' => $article_id, 'user_id' => $user->user_id]);
         }
 
-        return response()->json([
-            'header' => 'İşlem Başarılı', 'message' => 'İzinler başarı ile güncellendi!', 'state' => 'success', 'action' => 'Tamam'
-        ], 200);
+        return response()->json();
     }
 }

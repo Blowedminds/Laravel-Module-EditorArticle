@@ -1,33 +1,32 @@
 <?php
 
-Route::get('articles', 'ArticleController@getArticles');
+Route::get('articles/paginate', 'ArticleController@getArticlesPaginate');
 
-Route::get('trashed-articles', 'ArticleController@getTrashedArticles');
+Route::get('articles/trashed/paginate', 'ArticleController@getTrashedArticlesPaginate');
 
 Route::prefix('article')->group(function () {
 
-    Route::put('', 'ArticleController@putArticle');
+    Route::post('', 'ArticleController@postArticle');
 
 
     Route::get('{article_slug}', 'ArticleController@getArticle');
 
-    Route::post('{article_id}', 'ArticleController@postArticle');
+    Route::put('{article_slug}', 'ArticleController@putArticle');
 
-    Route::delete('{article_id}', 'ArticleController@deleteArticle');
+    Route::delete('{article_slug}', 'ArticleController@deleteArticle');
 
 });
 
-Route::post('restore/{article_id}', 'ArticleController@postRestore');
+Route::post('restore/{article_slug}', 'ArticleController@postRestore');
 
 Route::get('content/{article_slug}/{language_slug}', 'ArticleController@getArticleContent');
 
-//TODO: Convert this also to content/article_id/language_slug
-Route::post('content/{article_id}', 'ArticleController@postArticleContent');
+Route::post('content/{article_slug}/{language_slug}', 'ArticleController@postArticleContent');
 
-Route::put('content/{article_id}', 'ArticleController@putArticleContent');
+Route::put('content/{article_slug}/{language_slug}', 'ArticleController@putArticleContent');
 
-Route::delete('force-delete/{article_id}', 'ArticleController@deleteForceDelete');
+Route::delete('force-delete/{article_slug}', 'ArticleController@deleteForceDelete');
 
-Route::get('permission/{article_id}', 'ArticleController@getPermission');
+Route::get('permission/{article_slug}', 'ArticleController@getPermission');
 
-Route::put('permission/{article_id}', 'ArticleController@putPermission');
+Route::put('permission/{article_slug}', 'ArticleController@putPermission');
