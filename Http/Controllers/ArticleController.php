@@ -147,7 +147,7 @@ class ArticleController extends Controller
         return response()->json();
     }
 
-    public function putArticleContent($article_id, $language_slug)
+    public function postArticleContent($article_slug, $language_slug)
     {
         request()->validate([
             'title' => 'required',
@@ -159,7 +159,7 @@ class ArticleController extends Controller
 
         $language_id = Language::slug($language_slug)->firstOrFail()->id;
 
-        $article = Article::where('id', $article_id)
+        $article = Article::slug($article_slug)
             ->withContent($language_id)->firstOrFail();
 
         if ($article->content) {
@@ -168,7 +168,7 @@ class ArticleController extends Controller
 
         $inputs = request()->all();
 
-        $inputs['article_id'] = $article_id;
+        $inputs['article_id'] = $article->id;
         $inputs['language_id'] = $language_id;
         $inputs['version'] = 1;
 
@@ -177,20 +177,19 @@ class ArticleController extends Controller
         return response()->json();
     }
 
-    public function postArticleContent($article_id, $language_slug)
+    public function putArticleContent($article_slug, $language_slug)
     {
         request()->validate([
             'title' => 'required',
             'sub_title' => 'required',
             'body' => 'required',
             'keywords' => 'required',
-            'published' => 'required',
-            'language_id' => 'required',
+            'published' => 'required'
         ]);
 
         $language_id = Language::slug($language_slug)->firstOrFail()->id;
 
-        $article = Article::whereId($article_id)->withContent($language_id)->first();
+        $article = Article::slug($article_slug)->withContent($language_id)->whereHasContent($language_id)->firstOrFail();
 
         if (
             $article->content->title != request()->input('title') ||
